@@ -96,9 +96,15 @@ conn_init(void)
   if (tty_open(&tty) != RC_OK)
   {
 #ifdef LOG
-    logw(0, "conn_init():"
-           " can't open tty device %s (%s)",
-           cfg.ttyport, strerror(errno));
+    if(cfg.rmtport > 0) {
+      logw(0, "conn_init():"
+            " can't open remote %s:%d (%s)",
+            cfg.rmtaddr, cfg.rmtport, strerror(errno));
+    } else {
+      logw(0, "conn_init():"
+            " can't open tty device %s (%s)",
+            cfg.ttyport, strerror(errno));
+    }
 #endif
     return RC_ERR;
   }

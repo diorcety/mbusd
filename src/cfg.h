@@ -58,6 +58,10 @@ typedef struct
   int trxcntl;
   /* trx control sysfs file */
   char trxcntl_file[INTBUFSIZE + 1];
+  /* Remote TTY address */
+  char rmtaddr[INTBUFSIZE + 1];
+  /* Remote TTY port */
+  int rmtport;
   /* TCP server address */
   char serveraddr[INTBUFSIZE + 1];
   /* TCP server port number */

@@ -56,6 +56,19 @@ tty_init(ttydata_t *mod)
   mod->fd = -1;
   mod->port = cfg.ttyport;
   mod->speed = cfg.ttyspeed;
+  if(cfg.rmtport > 0) {
+    mod->remote = calloc(1, sizeof(*mod->remote));
+    if(mod->remote == NULL) {
+      logw(0, "calloc(): can't allocate memory (%s)", strerror(errno));
+      return;
+    }
+    mod->remote->sin_family = AF_INET;
+    mod->remote->sin_port = htons(cfg.rmtport);
+    if(inet_pton(AF_INET, cfg.rmtaddr, &mod->remote->sin_addr) <= 0) {
+      logw(0, "inet_pton(): unable to process given IP \"%s\" (%s)", cfg.rmtaddr, strerror(errno));
+      return;
+    }
+  }
   mod->bpc = DEFAULT_BITS_PER_CHAR;
   if (toupper(cfg.ttymode[1]) != 'N')
   {
@@ -96,6 +109,18 @@ tty_get_name(char *ttyfullname)
 int
 tty_open(ttydata_t *mod)
 {
+  if(mod->remote != NULL) {  /* remote has been defined, use a TCP socket instead */
+    mod->fd = socket(AF_INET, SOCK_STREAM, 0);
+    if(mod->fd < 0) {
+      logw(0, "socket(): can't create remote socket (%s)", strerror(errno));
+      return RC_ERR;
+    }
+    if(connect(mod->fd, (struct sockaddr *)mod->remote, sizeof(*mod->remote)) < 0) {
+      logw(0, "connect(): can't connect to remote %s:%d (%s)", inet_ntoa(mod->remote->sin_addr), ntohs(mod->remote->sin_port), strerror(errno));
+      return RC_ERR;
+    }
+    return 0;
+  }
 #ifdef HAVE_LIBUTIL
   int buferr, uuerr;
   char *ttyname = tty_get_name(mod->port);
@@ -132,6 +157,9 @@ tty_set_attr(ttydata_t *mod)
 {
   int flag;
   speed_t tspeed = tty_transpeed(mod->speed);
+
+  if(mod->remote)   /* don't set attributes on TCP port */
+    return 0;
 
   memset(&mod->savedtios, 0, sizeof(struct termios));
   if (tcgetattr(mod->fd, &mod->savedtios))
@@ -391,6 +419,8 @@ tty_transpeed(int speed)
 int
 tty_cooked(ttydata_t *mod)
 {
+  if(mod->remote)
+    return shutdown(mod->fd, SHUT_RDWR);
   if (!isatty(mod->fd))
     return RC_ERR;
   if (tcsetattr(mod->fd, TCSAFLUSH, &mod->savedtios))

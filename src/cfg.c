@@ -130,6 +130,19 @@ cfg_handle_param(char *name, char *value)
     }
     strncpy(cfg.ttymode, value, INTBUFSIZE);
   }
+  else if (CFG_NAME_MATCH("remote"))
+  {
+    char *end;
+    end = strchr(value, ':');
+    if(end) {
+      memcpy(cfg.rmtaddr, value, end - value);
+      cfg.rmtport = strtoul(end + 1, NULL, 10);
+    } else {
+      CFG_ERR("remote port number not specified: %s", value);
+      return 0;
+    }
+    
+  }
   else if (CFG_NAME_MATCH("address"))
   {
     strncpy(cfg.serveraddr, value, INTBUFSIZE);

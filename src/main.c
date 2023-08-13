@@ -107,7 +107,7 @@ usage(char *exename)
    "[-L logfile] [-v level] "
 #endif
    "[-c cfgfile] \n"
-   "             [-p device] [-s speed] [-m mode]\n"
+   "             [-p device] [-s speed] [-m mode] [-e IP:port]\n"
 #ifdef TRXCTL
    "             [-t] [-y sysfsfile] [-Y sysfsfile]\n"
 #endif
@@ -129,6 +129,7 @@ usage(char *exename)
    "  -p device  : set serial port device name (default %s)\n"
    "  -s speed   : set serial port speed (default %d)\n"
    "  -m mode    : set serial port mode (default %s)\n"
+   "  -e IP:port : set remote TCP-to-Serial IP address and port\n"
    "  -A address : set TCP server address to bind (default %s)\n"
    "  -P port    : set TCP server port number (default %d)\n"
 #ifdef TRXCTL
@@ -185,7 +186,7 @@ main(int argc, char *argv[])
 #ifdef LOG
                "v:L:"
 #endif
-               "p:s:m:A:P:C:N:R:W:T:c:b")) != RC_ERR)
+               "p:s:m:e:A:P:C:N:R:W:T:c:b")) != RC_ERR)
   {
     switch (rc)
     {
@@ -297,6 +298,17 @@ main(int argc, char *argv[])
         {
           printf("%s: -m: invalid serial port stop bits "
               "(%c, must be 1 or 2)\n", exename, cfg.ttymode[2]);
+          exit(-1);
+        }
+        break;
+      case 'e':
+        end = strchr(optarg, ':');
+        if(end) {
+          memcpy(cfg.rmtaddr, optarg, end - optarg);
+          cfg.rmtport = strtoul(end + 1, NULL, 10);
+        } else {
+          printf("%s: -e: port number not specified"
+                 " (format must be IP:Port)\n", exename);
           exit(-1);
         }
         break;

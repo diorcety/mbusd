@@ -95,6 +95,7 @@ typedef struct
   int fd;                       /* tty file descriptor */
   int speed;                    /* serial port speed */
   char *port;                   /* serial port device name */
+  struct sockaddr_in *remote;    /* remote device address */
   int bpc;                      /* bits per character */
 #ifdef TRXCTL
   int trxcntl;                  /* trx control type (enum - see values in config.h) */
