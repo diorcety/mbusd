@@ -73,6 +73,8 @@ Usage:
               Specifies serial port speed.
        -m mode
               Specifies serial port mode (like 8N1).
+       -e IP:port 
+              Specifies remote TCP-to-Serial device IP address and port. 
        -t     Enable RTS RS-485 data direction control (if not disabled while compile).
        -y file
               Enable RS-485 direction data direction control by writing '1' to file
