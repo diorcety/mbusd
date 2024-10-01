@@ -52,46 +52,10 @@ void conn_fix_request_header_len(conn_t *conn, unsigned char len);
 
 #define FD_MSET(d, s) do { FD_SET(d, s); max_sd = MAX(d, max_sd); } while (0);
 
-int tty_reopen()
+int tty_reopen(int reopen)
 {
-  logw(3, "tty re-opening...");
+  logw(3, reopen? "tty re-opening..." : "tty opening...");
   tty_close(&tty);
-  tty_init(&tty);
-  if (tty_open(&tty) != RC_OK)
-  {
-#ifdef LOG
-    logw(0, "tty_reopen():"
-           " can't open tty device %s (%s)",
-           cfg.ttyport, strerror(errno));
-#endif
-    return RC_ERR;
-  }
-  state_tty_set(&tty, TTY_PAUSE);
-  logw(3, "tty re-opened.");
-  return RC_OK;
-}
-
-void tty_reinit()
-{
-  logw(3, "trying to re-open tty...");
-  long delay = 100000l; /* initial open retry delay, 100 msecs */
-  while (tty_reopen())
-  {
-    usleep(delay);
-    if (sig_flag) sig_exec(); /* check for signals */
-    delay = MIN(delay*2, 3000000l); /* retry delay exponential backoff, up to 3 secs */
-  }
-}
-
-/*
- * Connections startup initialization
- * Parameters: none
- * Return: RC_OK in case of success, RC_ERR otherwise
- */
-int
-conn_init(void)
-{
-  /* tty device initialization */
   tty_init(&tty);
   if (tty_open(&tty) != RC_OK)
   {
@@ -109,6 +73,32 @@ conn_init(void)
     return RC_ERR;
   }
   state_tty_set(&tty, TTY_PAUSE);
+  logw(3, reopen? "tty re-opened." : "tty opened.");
+  return RC_OK;
+}
+
+void tty_reinit(int reopen)
+{
+  logw(3, reopen ? "trying to re-open tty...": "trying to open tty...");
+  long delay = (cfg.rmtport > 0) ? 1000000l : 100000l; /* initial open retry delay, 100 msecs */
+  while (tty_reopen(reopen))
+  {
+    usleep(delay);
+    if (sig_flag) sig_exec(); /* check for signals */
+    delay = MIN(delay*2, ((cfg.rmtport > 0) ? 30000000l : 3000000l)); /* retry delay exponential backoff, up to 3 secs */
+  }
+}
+
+/*
+ * Connections startup initialization
+ * Parameters: none
+ * Return: RC_OK in case of success, RC_ERR otherwise
+ */
+int
+conn_init(void)
+{
+  /* tty device initialization */
+  tty_reinit(0);
 
   /* create server socket */
   if ((server_sd = sock_create_server(cfg.serveraddr, cfg.serverport, TRUE)) < 0)
@@ -524,7 +514,7 @@ conn_loop(void)
 #ifdef LOG
               logw(0, "conn[%s]: state CONN_TTY deadlock.", curconn->remote_addr);
 #endif
-              tty_reinit();
+              tty_reinit(1);
             }
             /* purge connection */
 #ifdef LOG
@@ -554,7 +544,7 @@ conn_loop(void)
 #ifdef LOG
           logw(0, "tty: error in write() (%s)", strerror(errno));
 #endif
-          tty_reinit();
+          tty_reinit(1);
         }
 #ifdef DEBUG
         logw(7, "tty: written %d bytes", rc);
@@ -641,7 +631,7 @@ conn_loop(void)
 #ifdef LOG
           logw(0, "tty: error in read() (%s)", rc ? strerror(errno) : "port closed");
 #endif
-          tty_reinit();
+          tty_reinit(1);
         }
         else
         {
@@ -704,7 +694,7 @@ conn_loop(void)
 #ifdef LOG
           logw(0, "tty: error in read() (%s)", rc ? strerror(errno) : "port closed");
 #endif
-          tty_reinit();
+          tty_reinit(1);
         }
 #ifdef DEBUG
         else {
