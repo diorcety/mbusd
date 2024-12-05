@@ -119,6 +119,8 @@ tty_open(ttydata_t *mod)
       logw(0, "connect(): can't connect to remote %s:%d (%s)", inet_ntoa(mod->remote->sin_addr), ntohs(mod->remote->sin_port), strerror(errno));
       return RC_ERR;
     }
+
+    sock_set_blkmode(mod->fd, TRUE);
     return 0;
   }
 #ifdef HAVE_LIBUTIL
